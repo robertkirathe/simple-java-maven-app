@@ -1,8 +1,19 @@
 pipeline {
     agent {
-        docker {
-            image 'maven:3.8.7-openjdk-21'
-            args '-v /root/.m2:/root/.m2'
+        kubernetes {
+            label 'maven-agent'
+            defaultContainer 'maven'
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: maven
+    image: maven:3.8.7-openjdk-21
+    command:
+    - cat
+    tty: true
+"""
         }
     }
     options {
