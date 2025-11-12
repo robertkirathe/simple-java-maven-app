@@ -1,28 +1,64 @@
 pipeline {
-    agent any
-    options {
-        skipStagesAfterUnstable()
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: maven
+    image: maven:3.9.6-eclipse-temurin-17
+    command:
+    - cat
+    tty: true
+"""
+        }
     }
+
+    environment {
+        MAVEN_OPTS = "-Dmaven.repo.local=.m2/repository"
+    }
+
     stages {
-        stage('Build') {
+        stage('Checkout') {
             steps {
-                sh 'mvn -B -DskipTests clean package'
+                git branch: 'master', url: 'https://github.com/robertkirathe/simple-java-maven-app.git'
             }
         }
-        stage('Test') {
+
+        stage('Build') {
             steps {
-                sh 'mvn test'
-            }
-            post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
+                container('maven') {
+                    sh 'mvn -B -DskipTests clean package'
                 }
             }
         }
-        stage('Deliver') { 
+
+        stage('Test') {
             steps {
-                sh './jenkins/scripts/deliver.sh' 
+                container('maven') {
+                    sh 'mvn test'
+                }
             }
+        }
+
+        stage('Deliver') {
+            steps {
+                echo 'Delivering application...'
+                // You can add your deploy or artifact upload steps here
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+        }
+        success {
+            echo 'Build completed successfully!'
+        }
+        failure {
+            echo 'Build failed.'
         }
     }
 }
