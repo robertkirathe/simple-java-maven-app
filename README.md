@@ -1,6 +1,6 @@
 # simple-java-maven-app
-Robert made a change here.
-Made another change here
+#Robert made a change here.
+#Made another change here
 Another thechane
 another change
 
