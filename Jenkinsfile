@@ -1,14 +1,14 @@
 pipeline {
     agent {
         kubernetes {
-            label 'maven'
+            label 'maven-agent'
             defaultContainer 'maven'
             yaml """
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    jenkins/label: maven
+    jenkins/label: maven-agent
 spec:
   containers:
     - name: maven
@@ -16,57 +16,65 @@ spec:
       command:
         - cat
       tty: true
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "250m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
 """
         }
     }
 
     stages {
+        stage('Debug Info') {
+            steps {
+                echo "Running on pod: ${env.NODE_NAME}"
+                sh 'echo "Current user: $(whoami)"'
+                sh 'echo "Java version:" && java -version'
+                sh 'echo "Maven version:" && mvn -version'
+            }
+        }
+
         stage('Checkout') {
             steps {
-                echo 'Cloning repository...'
+                echo "Cloning repository..."
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Running Maven build...'
+                echo "Building the Maven project..."
                 sh 'mvn -B clean package'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running unit tests...'
+                echo "Running tests..."
                 sh 'mvn test'
             }
         }
 
-        stage('Archive') {
+        stage('Archive Artifacts') {
             steps {
-                echo 'Archiving artifacts...'
-                archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                echo 'Simulating deployment...'
-                sh 'echo "Deployment successful!"'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
     }
 
     post {
+        always {
+            echo "Cleaning up workspace..."
+            cleanWs()
+        }
         success {
-            echo '✅ Build and tests passed successfully!'
+            echo "Pipeline completed successfully!"
         }
         failure {
-            echo '❌ Build or tests failed!'
-        }
-        always {
-            echo '🧹 Cleaning up workspace...'
-            cleanWs()
+            echo "Pipeline failed. Check pod logs for details."
         }
     }
 }
