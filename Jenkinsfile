@@ -16,13 +16,9 @@ spec:
       command:
         - cat
       tty: true
-      resources:
-        requests:
-          memory: "256Mi"
-          cpu: "250m"
-        limits:
-          memory: "512Mi"
-          cpu: "500m"
+    - name: jnlp
+      image: jenkins/inbound-agent:latest
+      args: ['\$(JENKINS_SECRET)', '\$(JENKINS_NAME)']
 """
         }
     }
@@ -31,34 +27,30 @@ spec:
         stage('Debug Info') {
             steps {
                 echo "Running on pod: ${env.NODE_NAME}"
-                sh 'echo "Current user: $(whoami)"'
-                sh 'echo "Java version:" && java -version'
-                sh 'echo "Maven version:" && mvn -version'
+                sh 'java -version'
+                sh 'mvn -version'
             }
         }
 
         stage('Checkout') {
             steps {
-                echo "Cloning repository..."
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                echo "Building the Maven project..."
                 sh 'mvn -B clean package'
             }
         }
 
         stage('Test') {
             steps {
-                echo "Running tests..."
                 sh 'mvn test'
             }
         }
 
-        stage('Archive Artifacts') {
+        stage('Archive') {
             steps {
                 archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
@@ -67,14 +59,14 @@ spec:
 
     post {
         always {
-            echo "Cleaning up workspace..."
-            cleanWs()
+            echo "Cleaning workspace"
+            deleteDir()
         }
         success {
-            echo "Pipeline completed successfully!"
+            echo "Pipeline finished successfully"
         }
         failure {
-            echo "Pipeline failed. Check pod logs for details."
+            echo "Pipeline failed"
         }
     }
 }
